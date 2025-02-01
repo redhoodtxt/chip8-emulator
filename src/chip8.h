@@ -34,12 +34,12 @@ class Chip8 {
 
         bool drawFlag;
 
-        void loadGame();
+        void loadGame();    
         void emulateCycle();
-        void setKeys();
+        void storeInput();
         void debug();
         
         uint8_t keypad[KEYPAD_SIZE];                    // keypad
         uint8_t display[DISPLAY_WIDTH][DISPLAY_HEIGHT]; // display
 
-}
+};
