@@ -16,7 +16,7 @@ class Chip8 {
         uint8_t memory[MEMORY_SIZE];                    // memory 
 
         std::stack<uint16_t> stack;                     // stack 
-        uint8_t sp;                                     // stack pointer 
+        // uint8_t sp;                                     // stack pointer might not need ts
 
         uint16_t opcode;                                // opcode
         uint16_t pc;                                    // program counter 
@@ -34,7 +34,8 @@ class Chip8 {
 
         bool drawFlag;
 
-        void loadGame();    
+        void loadGame();
+        int extractValue(int opcode, int bits, int bitmask);    
         void emulateCycle();
         void storeInput();
         void debug();
