@@ -98,26 +98,70 @@ void Chip8::emulateCycle(){
             pc = nnn;
             break;
 
-        case 3: // 3xkk TODO: gengi - finish this 
+        case 3: 
+            if (V[x] == nn){
+                pc += 2;
+            }
             break;
 
-        case 4: // 4xkk TODO: gengi - finish this
+        case 4: 
+            if (V[x] != nn){
+                pc += 2;
+            }
             break; 
 
-        case 5: // 5xy0 TODO: gengi - finish this 
+        case 5: 
+            if (V[x] == V[y]){
+                pc += 2;
+            }
             break;
 
         case 6: // 6xnn
-            int index = x;
-            V[index] = nn;
+            V[x] = nn;
             break;
 
         case 7: // 7xnn
-            int index = x;
-            V[index] += nn;
+            V[x] += nn;
             break;
 
-        case 8: // TODO: gengi - finish this
+        case 8:
+            switch(n){
+                case 0:
+                    V[x] = V[y];
+                    break;
+                case 1: 
+                    V[x] = (V[x] | V[y]);
+                    break;
+                case 2:
+                    V[x] = (V[x] & V[y]);
+                    break;
+                case 3:
+                    V[x] = (V[x] ^ V[y]);
+                    break;
+                case 4:
+                    V[x] += V[y];
+                    break;
+                case 5:
+                    V[x] -= V[y];
+                    if (V[x] > V[y]){
+                        V[15] = 1;
+                    }
+                    else{
+                        V[15] = 0;
+                    }
+                    break;
+                case 6: // TODO
+                    break;
+                case 7:
+                    V[y] -= V[x];
+                    if(V[y] > V[x]){
+                        V[15] = 1;
+                    }
+                    else{
+                        V[15] = 0;
+                    }
+                    break;
+            }
             break;
 
         case 9: // TODO: gengi - finish this
