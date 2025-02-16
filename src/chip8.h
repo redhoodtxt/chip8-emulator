@@ -2,8 +2,11 @@
 this contains the structure of the class implementation file (chip8.cpp). still a noob so bear with me if this is 
 not great 
 */ 
-# include <stdint.h> 
-# include <stack> 
+#include <stdint.h> 
+#include <stack> 
+#include <GL/glew.h>
+
+
 
 class Chip8 {
     private: 
@@ -30,16 +33,16 @@ class Chip8 {
 
     public: 
         Chip8(); 
-        ~Chip8();
+        ~Chip8(); 
 
         bool drawFlag;
-
         void loadGame();
-        int extractValue(int opcode, int bits, int bitmask);    
+           
         void emulateCycle();
         void storeInput();
-        void debug();
         
+        void debug();
+        int extractValue(int opcode, int bits, int bitmask);
         uint8_t keypad[KEYPAD_SIZE];                    // keypad
         uint8_t display[DISPLAY_WIDTH][DISPLAY_HEIGHT]; // display
 
