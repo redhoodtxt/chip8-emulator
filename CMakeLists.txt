@@ -1,45 +1,54 @@
 cmake_minimum_required(VERSION 3.10.0)
 project(chip8)
 
-# glfw settings
+# Ensure we use at least C++17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+
+# Disable GLFW's unnecessary components
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
-# adding where to find the glfw and glad
+# Add external dependencies
 add_subdirectory(external/glfw-3.4)
-add_subdirectory(external/glad)
 
+# Find OpenGL
 find_package(OpenGL REQUIRED)
 
-# create executable 
-add_executable(chip8
-    ./src/chip8.cpp
-    ./src/main.>cpp
-    ./src/include/chip8.h
+
+# Source files for the project
+set(CHIP8_SOURCES
+    external/glad/src/glad.c
+    src/chip8.cpp
+    src/main.cpp
 )
 
-# include directories
+# Header files (optional, not necessary for compilation)
+set(CHIP8_HEADERS
+    ./include/chip8.h
+    external/glad/include/glad/glad.h
+)
+
+# Create executable for the CHIP-8 emulator
+add_executable(chip8 ${CHIP8_SOURCES} ${CHIP8_HEADERS})
+
+# Include necessary directories
 target_include_directories(chip8 PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/glfw-3.4/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/glad/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/include
+    external/glfw-3.4/include
+    external/glad/include
+    ./include
 )
 
-# source files
-target_sources(chip8 PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/glad/src/glad.c
-)
 
-# link the libraries
+# Link the required libraries
 target_link_libraries(chip8 PRIVATE
     glfw
-    glad
+    # glad i dont need to fucking link this shit here 
     OpenGL::GL
 )
 
-# set the C++ standards
+# Ensure the executable is placed inside the 'bin' directory in the build folder
 set_target_properties(chip8 PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED YES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )

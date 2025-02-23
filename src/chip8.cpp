@@ -7,6 +7,9 @@ Chip8::Chip8(){
 
 }
 
+Chip8::~Chip8(){
+}
+
 // prepare system state 
 void Chip8::init(){
 
@@ -89,9 +92,8 @@ void Chip8::emulateCycle(){
                     break;
                 case(0x00EE):
                     // Return from a subroutine.
-                    break; 
+                    break;       
             }
-            break;
     
         case 1: 
             // Jump to location nnn.
@@ -194,29 +196,33 @@ void Chip8::emulateCycle(){
             }
             break;
 
-        case 0xA: // TODO: gengi - finish this
+        case 0xa: // TODO: gengi - finish this
             I = nnn;
             break;  
         // Jump to location nnn + V0.
-        case 0xB:
+        case 0xb: {
             int offset = V[2];
-            pc = nnn + V[2];
+            pc = nnn + offset;
+        }
+
         // Set Vx = random byte AND kk.
-        case 0xC:
+        case 0xc: {
             int rand_byte = rand() % 101;
             V[x] = rand_byte  & nn;
             break;
-        case 0xD: 
+        }
+
+        case 0xd: 
             //  Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
             break;
-        case 0xE:
+        case 0xe:
             //  Skip next instruction if key with the value of Vx is pressed.
             break;
-        case 0xF:
+        case 0xf:
             switch(nn){
                 case 0x07:
                     //  Set Vx = delay timer value.
-                    V[x] =delay_timer;
+                    V[x] = delay_timer;
                     break;
                 case 0x0A:
                     //  Wait for a key press, store the value of the key in Vx.
@@ -239,8 +245,10 @@ void Chip8::emulateCycle(){
                     }
                 case 0x55:
                     //  Store registers V0 through Vx in memory starting at location I.
+                    break;
                 case 0x65:
                     //  Read registers V0 through Vx from memory starting at location I.
+                    break;
 
             }
         
@@ -255,6 +263,6 @@ void Chip8::debug(){
 
 }
 
-int Chip8::extractValue(int opcode, int bitmask, int bits = 0){
+int Chip8::extractValue(int opcode, int bitmask, int bits){ // default argument for bits is 0
     return (opcode & bitmask) >> bits;
-}
+}   

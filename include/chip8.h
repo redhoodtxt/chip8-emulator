@@ -1,9 +1,10 @@
+#include <stdint.h> 
+#include <stack> 
+
 /*
 this contains the structure of the class implementation file (chip8.cpp). still a noob so bear with me if this is 
 not great 
 */ 
-#include <stdint.h> 
-#include <stack> 
 
 class Chip8 {
     private: 
@@ -39,7 +40,7 @@ class Chip8 {
         void storeInput();
         
         void debug();
-        int extractValue(int opcode, int bits, int bitmask);
+        int extractValue(int opcode, int bitmask, int bits=0);
         uint8_t keypad[KEYPAD_SIZE];                    // keypad
         uint8_t display[DISPLAY_WIDTH][DISPLAY_HEIGHT]; // display
 

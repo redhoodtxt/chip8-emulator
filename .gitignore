@@ -1,1 +1,6 @@
 .DS_Store
+.vscode/*
+notes.md
+todo.md
+error_logs.md
+
