@@ -5,6 +5,7 @@
 this contains the structure of the class implementation file (chip8.cpp). still a noob so bear with me if this is 
 not great 
 */ 
+extern const uint8_t CHIP8_FONTSET[80];
 
 class Chip8 {
     private: 
@@ -28,7 +29,7 @@ class Chip8 {
         uint8_t delay_timer;                            // delay timer 
 
         void init();
-
+    
     public: 
         Chip8(); 
         ~Chip8(); 
