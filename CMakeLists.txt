@@ -22,12 +22,14 @@ set(CHIP8_SOURCES
     external/glad/src/glad.c
     src/chip8.cpp
     src/main.cpp
+    src/shaders.cpp
 )
 
 # Header files (optional, not necessary for compilation)
 set(CHIP8_HEADERS
     ./include/chip8.h
     external/glad/include/glad/glad.h
+    ./include/shaders.h
 )
 
 # Create executable for the CHIP-8 emulator
@@ -38,6 +40,7 @@ target_include_directories(chip8 PUBLIC
     external/glfw-3.4/include
     external/glad/include
     ./include
+    ./include/glm
 )
 
 
@@ -49,6 +52,3 @@ target_link_libraries(chip8 PRIVATE
 )
 
 # Ensure the executable is placed inside the 'bin' directory in the build folder
-set_target_properties(chip8 PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
