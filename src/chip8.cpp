@@ -7,7 +7,8 @@
 #include <GLFW/glfw3.h>
 
 Chip8::Chip8()
-	: opcode(0), pc(0), I(0), sound_timer(0), delay_timer(0), drawFlag(false), memory{}, V{}, keypad{}, display{} // zero-ed initializer list 
+	: opcode(0), pc(0), I(0), sound_timer(0), delay_timer(0), drawFlag(false), waitingForVBlank(false), vipMode(true), memory {
+}, V{}, keypad{}, display{} // zero-ed initializer list 
 {
 
 }
@@ -101,7 +102,7 @@ void Chip8::loadGame() {
 	//char path[512];
 	//strcpy(path, directory); // copy directory
 	//strcat(path, filename);  // append filename
-	const char* path = "C:/Users/Admin/Documents/gengz/projects/chip8-emulator/games/flightrunner.ch8";
+	const char* path = "C:/Users/Admin/Documents/gengz/projects/chip8-emulator/problematic/TETRIS";
 	// open file
 	FILE* pFile = fopen(path, "rb");
 	if (pFile == nullptr) {
@@ -126,6 +127,11 @@ void Chip8::loadGame() {
 
 
 void Chip8::emulateCycle() {
+
+	if (waitingForVBlank) {
+		return;  // Skip this cycle
+	}
+
 	uint8_t byte_1 = memory[pc];
 	uint8_t byte_2 = memory[pc + 1];
 
@@ -153,6 +159,7 @@ void Chip8::emulateCycle() {
 		case(0x00EE): // TODO
 			// Return from a subroutine
 			pc = stack.top(); // retrieves the value since pop(0) returns void
+			stack.pop();
 			break;
 		}
 		break;
@@ -191,7 +198,7 @@ void Chip8::emulateCycle() {
 		//  Set Vx = Vx + kk.
 		V[x] += nn;
 		break;
-	case 8:
+	case 8: // a note to always set the VF register after the arithmetic operation, if not VF will not hold the right value at calculation time
 		switch (n) {
 		case 0:
 			//  Set Vx = Vy.
@@ -200,50 +207,77 @@ void Chip8::emulateCycle() {
 		case 1:
 			//  Set Vx = Vx OR Vy.
 			V[x] = (V[x] | V[y]);
+			V[0xF] = 0;
 			break;
 		case 2:
 			//  Set Vx = Vx AND Vy.
 			V[x] = (V[x] & V[y]);
+			V[0xF] = 0;
 			break;
 		case 3:
 			//  Set Vx = Vx XOR Vy.
 			V[x] = (V[x] ^ V[y]);
+			V[0xF] = 0;
 			break;
 		case 4: {
 			//  Set Vx = Vx + Vy, set VF = carry.
 			//  The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. 
-			//Only the lowest 8 bits of the result are kept, and stored in Vx.
+			//  Only the lowest 8 bits of the result are kept, and stored in Vx.
 			uint16_t sum = V[x] + V[y];
-			V[0xF] = (sum > 0xFF); // 255
-			V[x] = sum & 0xFF; // mask to get lower 8 
+			V[x] = sum & 0xFF; // mask to get lower 8
+			V[0xF] = (sum > 0xFF); // 255			 
 			break;
 		}
-		case 5:
+		case 5: {
 			//  Set Vx = Vx - Vy.
-			//  If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
-			V[x] -= V[y];
-			V[0xF] = (V[x] > V[y]);
+			//  If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx
+			uint8_t vx = V[x];
+			uint8_t vy = V[y];
+			V[x] = vx - vy;
+			V[0xF] = (vx >= vy);
 			break;
+		}
 		case 6: {
 			//  Set Vx = Vx SHR 1.
-			//  If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
+			// If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
 			// older versions assigned VY to VX
-			V[x] = V[y];
-			V[0xF] = V[x] & 1; // set the bool lsb to the VF flag 
+
+			// VIP mode?
+			if (vipMode) {
+				V[y] = V[x];
+				uint8_t vy = V[y];
+				V[x] = vy >> 1; // divide by 2 and reassign to Vx
+				V[0xF] = vy & 1; // set the bool lsb to the VF 
+				break;
+			}
+
+			uint8_t vx = V[x];
 			V[x] >>= 1; // divide by 2 and reassign to Vx
+			V[0xF] = vx & 1; // set the bool lsb to the VF 
 			break;
 		}
 		case 7:
 			//  Set Vx = Vy - Vx, set VF = NOT borrow. 
 			// If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx
-			V[y] -= V[x];
-			V[0xF] = (V[y] > V[x]);
+			V[x] = V[y] - V[x];
+			V[0xF] = (V[y] >= V[x]);
 			break;
 		case 0xe:
 			// Set Vx = Vx SHL 1.
 			// If the most - significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
-			V[0xF] = (V[x] & 0x80) >> 7; // 0x80 is binary 1000 0000. shift by 15 bits to lsb for bool value and set VF based on that
+
+			// VIP mode?
+			if (vipMode) {
+				V[y] = V[x];
+				uint16_t vy = V[y];
+				V[x] = vy << 1; // divide by 2 and reassign to Vx
+				V[0xF] = (vy & 0x80) >> 7; // set the bool lsb to the VF 
+				break;
+			}
+
+			uint16_t vx = V[x];
 			V[x] <<= 1;
+			V[0xF] = (vx & 0x80) >> 7; // 0x80 is binary 1000 0000. shift by 15 bits to lsb for bool value and set VF based on that
 			break;
 		}
 		break;
@@ -287,8 +321,11 @@ void Chip8::emulateCycle() {
 				bool sprite_pixel = (sprite_byte >> (7 - col)) & 1;
 				if (!sprite_pixel) continue;
 
-				int x_coord = (vx + col) % 64;
-				int y_coord = (vy + row) % 32;
+				int x_coord = (vx + col);
+				int y_coord = (vy + row);
+				// clipping
+				if (x_coord >= 64) break;
+				if (y_coord >= 32) break;
 
 				uint8_t& screen_pixel = display[x_coord][y_coord];
 				if (screen_pixel) V[0xF] = 1;  // collision detection
@@ -296,6 +333,7 @@ void Chip8::emulateCycle() {
 			}
 		}
 		drawFlag = true;
+		waitingForVBlank = true;
 		break;
 	}
 	case 0xe:
@@ -329,7 +367,7 @@ void Chip8::emulateCycle() {
 			for (int i = 0; i < 16; i++) {
 				if (keypad[i]) {
 					printf("FX0A: Key %X pressed, storing in V[%X]\n", i, x);
-					V[x] = i;
+					V[x] = keypad[i];
 					keyPressed = true;
 					break;
 				}
@@ -361,7 +399,7 @@ void Chip8::emulateCycle() {
 			//  The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I, 
 			//  the tens digit at location I+1, and the ones digit at location I+2.
 			memory[I] = floor(V[x] / float(100));
-			memory[I + 1] = floor(V[x] / float(10));
+			memory[I + 1] = floor((V[x] % 100) / 10);
 			memory[I + 2] = V[x] % 10;
 			break;
 		case 0x55: 
@@ -369,6 +407,7 @@ void Chip8::emulateCycle() {
 			for (int i = 0; i <= x; i++) {
 				memory[I + i] = V[i];
 			}
+			I += x + 1; // increment register quirk
 			break;
 		case 0x65:
 			//  Read registers V0 through Vx from memory starting at location I.
@@ -376,6 +415,7 @@ void Chip8::emulateCycle() {
 			for (int i = 0; i <= x; i++) {
 				V[i] = memory[I + i];
 			}
+			I += x + 1;
 			break;
 		}
 	}

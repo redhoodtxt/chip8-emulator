@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <chrono>
+#include <thread>
 #include "chip8.h"
 
 #include <glad/glad.h>
@@ -248,9 +249,13 @@ void processInput(GLFWwindow* window, Chip8& chip8, int scancodes[]) {
 }
 
 void renderLoop(GLFWwindow* window, Chip8& chip8, Shader& shader, unsigned int VAO) {
-	auto lastTime = std::chrono::high_resolution_clock::now();
+	auto lastFrameTime = std::chrono::high_resolution_clock::now();
+	const double frameTime = 1000.0 / 60.0;  // 60 FPS = ~16.67ms per frame
 
 	while (!glfwWindowShouldClose(window)) {
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFrameTime).count();
+
 		glfwPollEvents();
 
 		// Debug: print keypad state
@@ -270,12 +275,21 @@ void renderLoop(GLFWwindow* window, Chip8& chip8, Shader& shader, unsigned int V
 		}
 
 		// update timers at 60Hz
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTime).count();
-		if (elapsed >= 16) {  // ~60Hz
+		if (elapsed >= frameTime) {
+			chip8.waitingForVBlank = false;
+
+			if (chip8.drawFlag) {
+				chip8.drawFlag = false;
+			}
+
+			renderDisplay(window, chip8, shader, VAO);
+			glfwSwapBuffers(window);
+
+			// Update timers at 60Hz
 			if (chip8.delay_timer > 0) chip8.delay_timer--;
 			if (chip8.sound_timer > 0) chip8.sound_timer--;
-			lastTime = currentTime;
+
+			lastFrameTime = currentTime;
 		}
 
 		renderDisplay(window, chip8, shader, VAO);

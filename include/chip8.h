@@ -35,6 +35,8 @@ public:
 	~Chip8();
 
 	bool drawFlag;
+	bool vipMode;
+	bool waitingForVBlank;
 	void init();
 	void loadGame();
 
