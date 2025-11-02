@@ -3,6 +3,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <filesystem>
+#include <vector>
+
 
 #include <GLFW/glfw3.h>
 
@@ -95,33 +98,154 @@ void Chip8::init() {
 //
 //}
 
-void Chip8::loadGame() {
-	//const char* directory = "../games/"; // directory where game is stored
-	//const char* filename = "2-ibm-logo.ch8"; // hardcoded IBM Logo ROM
+//void Chip8::loadGame() {
+//	//const char* directory = "../games/"; // directory where game is stored
+//	//const char* filename = "2-ibm-logo.ch8"; // hardcoded IBM Logo ROM
+//
+//	//char path[512];
+//	//strcpy(path, directory); // copy directory
+//	//strcat(path, filename);  // append filename
+//	const char* path = "C:/Users/Admin/Documents/gengz/projects/chip8-emulator/problematic/TETRIS";
+//	// open file
+//	FILE* pFile = fopen(path, "rb");
+//	if (pFile == nullptr) {
+//		printf("Failed to open the ROM file: %s\n", path);
+//		return;
+//	}
+//
+//	// load the binary into memory at 0x200 (512)
+//	size_t bytesRead = fread(memory + 512, sizeof(uint8_t), MEMORY_SIZE - 512, pFile);
+//	printf("ROM loaded: %zu bytes\n", bytesRead);
+//	printf("First few bytes: %02X %02X %02X %02X\n",
+//		memory[0x200], memory[0x201], memory[0x202], memory[0x203]);
+//	if (bytesRead == 0) {
+//		printf("Failed to read the ROM file: %s\n", path);
+//		fclose(pFile);
+//		return;
+//	}
+//
+//	// close the binary 
+//	fclose(pFile);
+//}
 
-	//char path[512];
-	//strcpy(path, directory); // copy directory
-	//strcat(path, filename);  // append filename
-	const char* path = "C:/Users/Admin/Documents/gengz/projects/chip8-emulator/problematic/TETRIS";
-	// open file
-	FILE* pFile = fopen(path, "rb");
-	if (pFile == nullptr) {
-		printf("Failed to open the ROM file: %s\n", path);
+#include <filesystem>
+#include <vector>
+#include <iostream>
+#include <cstdlib>
+#include <algorithm>
+
+void Chip8::loadGame() {
+	// Check if CHIP8_ROOT is already set
+	const char* projectRoot = std::getenv("CHIP8_ROOT");
+	std::string directory;
+
+	if (!projectRoot) {
+		// Not set, so determine and set it automatically
+		std::filesystem::path exePath = std::filesystem::current_path();
+
+		// Go up directories until we find "games" folder
+		std::filesystem::path searchPath = exePath;
+		bool found = false;
+
+		for (int i = 0; i < 5; i++) {  // Search up to 5 levels
+			std::filesystem::path gamesPath = searchPath / "games";
+			if (std::filesystem::exists(gamesPath) &&
+				std::filesystem::is_directory(gamesPath)) {
+				// Found it! Set the environment variable
+				std::string rootPath = searchPath.string();
+
+#ifdef _WIN32
+				_putenv_s("CHIP8_ROOT", rootPath.c_str());
+#else
+				setenv("CHIP8_ROOT", rootPath.c_str(), 1);
+#endif
+
+				printf(" Auto-detected project root: %s\n", rootPath.c_str());
+				directory = gamesPath.string() + "/";
+				found = true;
+				break;
+			}
+			searchPath = searchPath.parent_path();
+		}
+
+		if (!found) {
+			printf("Error: Could not find 'games' directory\n");
+			return;
+		}
+	}
+	else {
+		// Already set, use it
+		directory = std::string(projectRoot) + "/games/";
+		printf("Using CHIP8_ROOT: %s\n", projectRoot);
+	}
+
+	std::vector<std::string> romFiles;
+
+	// Scan directory for all files (not just .ch8)
+	try {
+		for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+			if (entry.is_regular_file()) {
+				std::string filename = entry.path().filename().string();
+				// Skip hidden files and common non-ROM files
+				if (filename[0] != '.' &&
+					filename != "README.md" &&
+					filename != "README.txt") {
+					romFiles.push_back(filename);
+				}
+			}
+		}
+	}
+	catch (const std::filesystem::filesystem_error& e) {
+		printf("Error reading directory %s: %s\n", directory.c_str(), e.what());
 		return;
 	}
 
-	// load the binary into memory at 0x200 (512)
+	if (romFiles.empty()) {
+		printf("No ROM files found in %s\n", directory.c_str());
+		return;
+	}
+
+	// Sort alphabetically
+	std::sort(romFiles.begin(), romFiles.end());
+
+	// Display ROMs
+	printf("\nAvailable ROMs:\n");
+	for (size_t i = 0; i < romFiles.size(); i++) {
+		printf("  %zu. %s\n", i + 1, romFiles[i].c_str());
+	}
+
+	// Get user selection
+	printf("\nEnter ROM number (1-%zu): ", romFiles.size());
+	int choice;
+	if (scanf("%d", &choice) != 1) {
+		printf("Invalid input\n");
+		return;
+	}
+	(void)getchar(); // consume newline
+
+	if (choice < 1 || choice >(int)romFiles.size()) {
+		printf("Invalid selection\n");
+		return;
+	}
+
+	// Load selected ROM
+	std::string selectedRom = romFiles[choice - 1];
+	std::string fullPath = directory + selectedRom;
+
+	FILE* pFile = fopen(fullPath.c_str(), "rb");
+	if (pFile == nullptr) {
+		printf("Failed to open ROM: %s\n", fullPath.c_str());
+		return;
+	}
+
 	size_t bytesRead = fread(memory + 512, sizeof(uint8_t), MEMORY_SIZE - 512, pFile);
-	printf("ROM loaded: %zu bytes\n", bytesRead);
-	printf("First few bytes: %02X %02X %02X %02X\n",
-		memory[0x200], memory[0x201], memory[0x202], memory[0x203]);
 	if (bytesRead == 0) {
-		printf("Failed to read the ROM file: %s\n", path);
+		printf("Failed to read ROM: %s\n", fullPath.c_str());
 		fclose(pFile);
 		return;
 	}
 
-	// close the binary 
+	printf("Loaded %s (%zu bytes)\n\n", selectedRom.c_str(), bytesRead);
 	fclose(pFile);
 }
 
